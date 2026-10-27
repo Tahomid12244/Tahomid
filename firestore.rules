@@ -1,0 +1,516 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && (
+        request.auth.token.email_verified == true ||
+        request.auth.token.firebase.sign_in_provider == 'phone'
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function userExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    // Validation Blueprints
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+        'uid', 'name', 'age', 'gender', 'district', 'isStudent',
+        'classLevel', 'academicGroup', 'batch', 'institution', 'rollId',
+        'occupation', 'organization', 'emailOrPhone', 'language', 'theme',
+        'currency', 'goals', 'hijriAdjustment', 'pinHash', 'pinSalt',
+        'consent', 'createdAt', 'lastLogin', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid', 'name', 'age', 'gender', 'district', 'isStudent',
+        'classLevel', 'academicGroup', 'batch', 'institution', 'rollId',
+        'occupation', 'organization', 'emailOrPhone', 'language', 'theme',
+        'currency', 'goals', 'hijriAdjustment', 'pinHash', 'pinSalt',
+        'consent', 'createdAt', 'lastLogin', 'updatedAt'
+      ]) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+      data.age is number && data.age >= 5 && data.age <= 100 &&
+      data.gender is string && data.gender.size() <= 32 &&
+      data.district is string && data.district.size() <= 64 &&
+      data.isStudent is bool &&
+      data.classLevel is string && data.classLevel.size() <= 40 &&
+      data.academicGroup is string && data.academicGroup.size() <= 40 &&
+      data.batch is string && data.batch.size() <= 60 &&
+      data.institution is string && data.institution.size() <= 160 &&
+      data.rollId is string && data.rollId.size() <= 60 &&
+      data.occupation is string && data.occupation.size() <= 80 &&
+      data.organization is string && data.organization.size() <= 160 &&
+      data.emailOrPhone is string && data.emailOrPhone.size() <= 160 &&
+      data.language is string && data.language.size() <= 5 && (data.language == 'bn' || data.language == 'en') &&
+      data.theme is string && data.theme.size() <= 10 && (data.theme == 'dark' || data.theme == 'light') &&
+      data.currency is string && data.currency.size() <= 10 &&
+      data.goals is map && data.goals.keys().size() <= 20 &&
+      data.hijriAdjustment is number && data.hijriAdjustment >= -2 && data.hijriAdjustment <= 2 &&
+      data.pinHash is string && data.pinHash.size() <= 256 &&
+      data.pinSalt is string && data.pinSalt.size() <= 128 &&
+      data.consent is bool && data.consent == true &&
+      data.createdAt is timestamp &&
+      data.lastLogin is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidPinLock(data, userId) {
+      return data.keys().hasAll(['uid', 'failedAttempts', 'lockoutCount', 'lockedUntil', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['uid', 'failedAttempts', 'lockoutCount', 'lockedUntil', 'createdAt', 'updatedAt']) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.failedAttempts is int && data.failedAttempts >= 0 && data.failedAttempts <= 100 &&
+      data.lockoutCount is int && data.lockoutCount >= 0 && data.lockoutCount <= 100 &&
+      data.lockedUntil is timestamp &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidStudySession(data, userId) {
+      return data.keys().hasAll(['uid', 'id', 'subjectId', 'topic', 'durationMinutes', 'date', 'source', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['uid', 'id', 'subjectId', 'topic', 'durationMinutes', 'date', 'source', 'createdAt', 'updatedAt']) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.id is string && data.id.size() <= 128 &&
+      data.subjectId is string && data.subjectId.size() <= 128 &&
+      data.topic is string && data.topic.size() <= 200 &&
+      data.durationMinutes is number && data.durationMinutes >= 1 && data.durationMinutes <= 1440 &&
+      data.date is string && data.date.size() <= 20 &&
+      data.source is string && data.source.size() <= 16 && (data.source == 'timer' || data.source == 'manual') &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidWorkoutLog(data, userId) {
+      return data.keys().hasAll(['uid', 'id', 'exercise', 'mode', 'sets', 'reps', 'durationMinutes', 'distanceKm', 'calories', 'date', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['uid', 'id', 'exercise', 'mode', 'sets', 'reps', 'durationMinutes', 'distanceKm', 'calories', 'date', 'createdAt', 'updatedAt']) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.id is string && data.id.size() <= 128 &&
+      data.exercise is string && data.exercise.size() >= 1 && data.exercise.size() <= 100 &&
+      data.mode is string && data.mode.size() <= 20 && (data.mode == 'reps' || data.mode == 'duration' || data.mode == 'distance') &&
+      data.sets is number && data.sets >= 0 && data.sets <= 500 &&
+      data.reps is number && data.reps >= 0 && data.reps <= 5000 &&
+      data.durationMinutes is number && data.durationMinutes >= 0 && data.durationMinutes <= 1440 &&
+      data.distanceKm is number && data.distanceKm >= 0 && data.distanceKm <= 500 &&
+      data.calories is number && data.calories >= 0 && data.calories <= 20000 &&
+      data.date is string && data.date.size() <= 20 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidWord(data, userId) {
+      return data.keys().hasAll(['uid', 'id', 'word', 'bnMeaning', 'enMeaning', 'partOfSpeech', 'example', 'tag', 'difficulty', 'reviewed', 'intervalDays', 'nextReviewDate', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['uid', 'id', 'word', 'bnMeaning', 'enMeaning', 'partOfSpeech', 'example', 'tag', 'difficulty', 'reviewed', 'intervalDays', 'nextReviewDate', 'createdAt', 'updatedAt']) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.id is string && data.id.size() <= 128 &&
+      data.word is string && data.word.size() >= 1 && data.word.size() <= 120 &&
+      data.bnMeaning is string && data.bnMeaning.size() <= 240 &&
+      data.enMeaning is string && data.enMeaning.size() <= 240 &&
+      data.partOfSpeech is string && data.partOfSpeech.size() <= 40 &&
+      data.example is string && data.example.size() <= 400 &&
+      data.tag is string && data.tag.size() <= 40 &&
+      data.difficulty is string && data.difficulty.size() <= 20 &&
+      data.reviewed is bool &&
+      data.intervalDays is number && data.intervalDays >= 0 && data.intervalDays <= 365 &&
+      data.nextReviewDate is string && data.nextReviewDate.size() <= 20 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidBook(data, userId) {
+      return data.keys().hasAll(['uid', 'id', 'title', 'author', 'bookType', 'language', 'totalPages', 'pagesRead', 'coverEmoji', 'coverColor', 'status', 'rating', 'review', 'notes', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['uid', 'id', 'title', 'author', 'bookType', 'language', 'totalPages', 'pagesRead', 'coverEmoji', 'coverColor', 'status', 'rating', 'review', 'notes', 'createdAt', 'updatedAt']) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.id is string && data.id.size() <= 128 &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+      data.author is string && data.author.size() <= 140 &&
+      data.bookType is string && data.bookType.size() <= 60 &&
+      data.language is string && data.language.size() <= 20 &&
+      data.totalPages is number && data.totalPages >= 1 && data.totalPages <= 20000 &&
+      data.pagesRead is number && data.pagesRead >= 0 && data.pagesRead <= data.totalPages &&
+      data.coverEmoji is string && data.coverEmoji.size() <= 16 &&
+      data.coverColor is string && data.coverColor.size() <= 32 &&
+      data.status is string && data.status.size() <= 20 && (data.status == 'want' || data.status == 'reading' || data.status == 'finished') &&
+      data.rating is number && data.rating >= 0 && data.rating <= 5 &&
+      data.review is string && data.review.size() <= 1000 &&
+      data.notes is string && data.notes.size() <= 1000 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidReadingLog(data, userId) {
+      return data.keys().hasAll(['uid', 'id', 'bookId', 'pages', 'minutes', 'date', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['uid', 'id', 'bookId', 'pages', 'minutes', 'date', 'createdAt', 'updatedAt']) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.id is string && data.id.size() <= 128 &&
+      data.bookId is string && data.bookId.size() <= 128 &&
+      data.pages is number && data.pages >= 0 && data.pages <= 5000 &&
+      data.minutes is number && data.minutes >= 0 && data.minutes <= 1440 &&
+      data.date is string && data.date.size() <= 20 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidExpense(data, userId) {
+      return data.keys().hasAll(['uid', 'id', 'txType', 'amount', 'category', 'date', 'note', 'paymentMethod', 'recurring', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['uid', 'id', 'txType', 'amount', 'category', 'date', 'note', 'paymentMethod', 'recurring', 'createdAt', 'updatedAt']) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.id is string && data.id.size() <= 128 &&
+      data.txType is string && data.txType.size() <= 16 && (data.txType == 'income' || data.txType == 'expense') &&
+      data.amount is number && data.amount >= 0 && data.amount <= 1000000000 &&
+      data.category is string && data.category.size() >= 1 && data.category.size() <= 64 &&
+      data.date is string && data.date.size() <= 20 &&
+      data.note is string && data.note.size() <= 300 &&
+      data.paymentMethod is string && data.paymentMethod.size() <= 40 &&
+      data.recurring is bool &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidHabitLog(data, userId) {
+      return data.keys().hasAll(['uid', 'id', 'habitId', 'date', 'completed', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['uid', 'id', 'habitId', 'date', 'completed', 'createdAt', 'updatedAt']) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.id is string && data.id.size() <= 128 &&
+      data.habitId is string && data.habitId.size() <= 128 &&
+      data.date is string && data.date.size() <= 20 &&
+      data.completed is bool &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidChapterProgress(data, userId) {
+      return data.keys().hasAll([
+        'uid', 'id', 'subjectId', 'paper', 'chapterNo',
+        'totalClasses', 'completedClasses', 'cqSolved', 'mcqSolved',
+        'admissionPyq', 'otherProblems', 'examDone', 'mistakesCorrected',
+        'difficulty', 'notes', 'hidden', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid', 'id', 'subjectId', 'paper', 'chapterNo',
+        'totalClasses', 'completedClasses', 'cqSolved', 'mcqSolved',
+        'admissionPyq', 'otherProblems', 'examDone', 'mistakesCorrected',
+        'difficulty', 'notes', 'hidden', 'createdAt', 'updatedAt'
+      ]) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.id is string && data.id.size() <= 128 &&
+      data.subjectId is string && data.subjectId.size() <= 128 &&
+      data.paper is int && (data.paper == 1 || data.paper == 2) &&
+      data.chapterNo is int && data.chapterNo >= 1 && data.chapterNo <= 100 &&
+      data.totalClasses is int && data.totalClasses >= 0 && data.totalClasses <= 500 &&
+      data.completedClasses is int && data.completedClasses >= 0 && data.completedClasses <= data.totalClasses &&
+      data.cqSolved is bool &&
+      data.mcqSolved is bool &&
+      data.admissionPyq is bool &&
+      data.otherProblems is bool &&
+      data.examDone is bool &&
+      data.mistakesCorrected is bool &&
+      data.difficulty is string && data.difficulty.size() <= 20 &&
+      data.notes is string && data.notes.size() <= 500 &&
+      data.hidden is bool &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidRoutine(data, userId) {
+      return data.keys().hasAll([
+        'uid', 'id', 'title', 'routineType', 'subjectId', 'date',
+        'repeat', 'startTime', 'endTime', 'reminderTime', 'done',
+        'progress', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid', 'id', 'title', 'routineType', 'subjectId', 'date',
+        'repeat', 'startTime', 'endTime', 'reminderTime', 'done',
+        'progress', 'createdAt', 'updatedAt'
+      ]) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.id is string && data.id.size() <= 128 &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+      data.routineType is string && data.routineType.size() <= 20 && (data.routineType == 'study' || data.routineType == 'daily' || data.routineType == 'money') &&
+      data.subjectId is string && data.subjectId.size() <= 128 &&
+      data.date is string && data.date.size() <= 20 &&
+      data.repeat is string && data.repeat.size() <= 32 &&
+      data.startTime is string && data.startTime.size() <= 16 &&
+      data.endTime is string && data.endTime.size() <= 16 &&
+      data.reminderTime is string && data.reminderTime.size() <= 16 &&
+      data.done is bool &&
+      data.progress is number && data.progress >= 0 && data.progress <= 100 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidDomainState(data, userId) {
+      return data.keys().hasAll(['uid', 'domain', 'data', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['uid', 'domain', 'data', 'createdAt', 'updatedAt']) &&
+      data.uid is string && data.uid.size() <= 128 && data.uid == userId &&
+      data.domain is string && data.domain.size() >= 1 && data.domain.size() <= 64 &&
+      data.data is map && data.data.keys().size() <= 250 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // Collection Rules
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidUserProfile(incoming(), userId) &&
+        isVerifiedUser() && isOwner(userId) && isValidId(userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'age', 'gender', 'district', 'isStudent', 'classLevel',
+            'academicGroup', 'batch', 'institution', 'rollId', 'occupation',
+            'organization', 'language', 'theme', 'currency', 'goals',
+            'hijriAdjustment', 'pinHash', 'pinSalt', 'lastLogin', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId);
+
+      // Monotonic PIN lockout state
+      match /security/{lockId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(lockId);
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(lockId) &&
+          isValidPinLock(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidPinLock(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(lockId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['failedAttempts', 'lockoutCount', 'lockedUntil', 'updatedAt']) &&
+          userExists(userId) && (
+            // Action 1: Record failed attempt / escalate lockout monotonically
+            (incoming().failedAttempts == existing().failedAttempts + 1 &&
+             incoming().lockoutCount >= existing().lockoutCount &&
+             incoming().lockedUntil >= existing().lockedUntil) ||
+            // Action 2: Reset failedAttempts ONLY when not actively locked
+            (request.time > existing().lockedUntil &&
+             incoming().failedAttempts == 0 &&
+             incoming().lockoutCount == existing().lockoutCount &&
+             incoming().lockedUntil == existing().lockedUntil)
+          );
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(lockId);
+      }
+
+      match /studySessions/{sessionId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(sessionId) &&
+          isValidStudySession(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidStudySession(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(sessionId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['subjectId', 'topic', 'durationMinutes', 'date', 'updatedAt']) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(sessionId);
+      }
+
+      match /workoutLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(logId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(logId) &&
+          isValidWorkoutLog(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidWorkoutLog(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(logId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['exercise', 'mode', 'sets', 'reps', 'durationMinutes', 'distanceKm', 'calories', 'date', 'updatedAt']) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(logId);
+      }
+
+      match /words/{wordId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(wordId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(wordId) &&
+          isValidWord(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidWord(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(wordId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['word', 'bnMeaning', 'enMeaning', 'partOfSpeech', 'example', 'tag', 'difficulty', 'reviewed', 'intervalDays', 'nextReviewDate', 'updatedAt']) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(wordId);
+      }
+
+      match /books/{bookId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(bookId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(bookId) &&
+          isValidBook(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidBook(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(bookId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'author', 'bookType', 'language', 'totalPages', 'pagesRead', 'coverEmoji', 'coverColor', 'status', 'rating', 'review', 'notes', 'updatedAt']) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(bookId);
+      }
+
+      match /readingLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(logId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(logId) &&
+          isValidReadingLog(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidReadingLog(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(logId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['pages', 'minutes', 'date', 'updatedAt']) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(logId);
+      }
+
+      match /expenses/{expenseId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(expenseId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(expenseId) &&
+          isValidExpense(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidExpense(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(expenseId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['txType', 'amount', 'category', 'date', 'note', 'paymentMethod', 'recurring', 'updatedAt']) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(expenseId);
+      }
+
+      match /habitLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(logId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(logId) &&
+          isValidHabitLog(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidHabitLog(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(logId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'updatedAt']) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(logId);
+      }
+
+      match /chapterProgress/{chapterId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(chapterId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(chapterId) &&
+          isValidChapterProgress(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidChapterProgress(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(chapterId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'totalClasses', 'completedClasses', 'cqSolved', 'mcqSolved',
+            'admissionPyq', 'otherProblems', 'examDone', 'mistakesCorrected',
+            'difficulty', 'notes', 'hidden', 'updatedAt'
+          ]) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(chapterId);
+      }
+
+      match /routines/{routineId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(routineId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(routineId) &&
+          isValidRoutine(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidRoutine(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(routineId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'routineType', 'subjectId', 'date', 'repeat',
+            'startTime', 'endTime', 'reminderTime', 'done', 'progress', 'updatedAt'
+          ]) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(routineId);
+      }
+
+      match /domainState/{domainId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(domainId);
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(domainId) &&
+          isValidDomainState(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+        allow update: if isValidDomainState(incoming(), userId) &&
+          isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(domainId) &&
+          incoming().uid == existing().uid &&
+          incoming().domain == existing().domain &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['data', 'updatedAt']) &&
+          userExists(userId);
+        allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId) && isValidId(domainId);
+      }
+    }
+  }
+}

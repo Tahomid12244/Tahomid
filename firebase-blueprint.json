@@ -1,0 +1,331 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Core user profile, preferences, goals, and hashed PIN metadata.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "age": { "type": "number" },
+        "gender": { "type": "string", "maxLength": 32 },
+        "district": { "type": "string", "maxLength": 64 },
+        "isStudent": { "type": "boolean" },
+        "classLevel": { "type": "string", "maxLength": 40 },
+        "academicGroup": { "type": "string", "maxLength": 40 },
+        "batch": { "type": "string", "maxLength": 60 },
+        "institution": { "type": "string", "maxLength": 160 },
+        "rollId": { "type": "string", "maxLength": 60 },
+        "occupation": { "type": "string", "maxLength": 80 },
+        "organization": { "type": "string", "maxLength": 160 },
+        "emailOrPhone": { "type": "string", "maxLength": 160 },
+        "language": { "type": "string", "enum": ["bn", "en"], "maxLength": 5 },
+        "theme": { "type": "string", "enum": ["dark", "light"], "maxLength": 10 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "goals": { "type": "object" },
+        "hijriAdjustment": { "type": "number" },
+        "pinHash": { "type": "string", "maxLength": 256 },
+        "pinSalt": { "type": "string", "maxLength": 128 },
+        "consent": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "name",
+        "age",
+        "district",
+        "isStudent",
+        "language",
+        "theme",
+        "currency",
+        "goals",
+        "hijriAdjustment",
+        "pinHash",
+        "pinSalt",
+        "consent",
+        "createdAt",
+        "lastLogin",
+        "updatedAt"
+      ]
+    },
+    "PinLockState": {
+      "title": "PinLockState",
+      "description": "Server-enforced monotonic PIN attempt and lockout tracker.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "failedAttempts": { "type": "number" },
+        "lockoutCount": { "type": "number" },
+        "lockedUntil": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "failedAttempts", "lockoutCount", "lockedUntil", "createdAt", "updatedAt"]
+    },
+    "StudySession": {
+      "title": "StudySession",
+      "description": "Logged Pomodoro or manual study session.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "id": { "type": "string", "maxLength": 128 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "topic": { "type": "string", "maxLength": 200 },
+        "durationMinutes": { "type": "number" },
+        "date": { "type": "string", "maxLength": 20 },
+        "source": { "type": "string", "enum": ["timer", "manual"], "maxLength": 16 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "id", "subjectId", "topic", "durationMinutes", "date", "source", "createdAt", "updatedAt"]
+    },
+    "WorkoutLog": {
+      "title": "WorkoutLog",
+      "description": "Exercise and workout session log.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "id": { "type": "string", "maxLength": 128 },
+        "exercise": { "type": "string", "maxLength": 100 },
+        "mode": { "type": "string", "enum": ["reps", "duration", "distance"], "maxLength": 20 },
+        "sets": { "type": "number" },
+        "reps": { "type": "number" },
+        "durationMinutes": { "type": "number" },
+        "distanceKm": { "type": "number" },
+        "calories": { "type": "number" },
+        "date": { "type": "string", "maxLength": 20 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "id", "exercise", "mode", "sets", "reps", "durationMinutes", "distanceKm", "calories", "date", "createdAt", "updatedAt"]
+    },
+    "VocabWord": {
+      "title": "VocabWord",
+      "description": "Vocabulary item with spaced repetition schedule.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "id": { "type": "string", "maxLength": 128 },
+        "word": { "type": "string", "maxLength": 120 },
+        "bnMeaning": { "type": "string", "maxLength": 240 },
+        "enMeaning": { "type": "string", "maxLength": 240 },
+        "partOfSpeech": { "type": "string", "maxLength": 40 },
+        "example": { "type": "string", "maxLength": 400 },
+        "tag": { "type": "string", "maxLength": 40 },
+        "difficulty": { "type": "string", "maxLength": 20 },
+        "reviewed": { "type": "boolean" },
+        "intervalDays": { "type": "number" },
+        "nextReviewDate": { "type": "string", "maxLength": 20 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "id", "word", "bnMeaning", "enMeaning", "partOfSpeech", "example", "tag", "difficulty", "reviewed", "intervalDays", "nextReviewDate", "createdAt", "updatedAt"]
+    },
+    "BookEntry": {
+      "title": "BookEntry",
+      "description": "Personal library book record.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "author": { "type": "string", "maxLength": 140 },
+        "bookType": { "type": "string", "maxLength": 60 },
+        "language": { "type": "string", "maxLength": 20 },
+        "totalPages": { "type": "number" },
+        "pagesRead": { "type": "number" },
+        "coverEmoji": { "type": "string", "maxLength": 16 },
+        "coverColor": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "enum": ["want", "reading", "finished"], "maxLength": 20 },
+        "rating": { "type": "number" },
+        "review": { "type": "string", "maxLength": 1000 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "id", "title", "author", "bookType", "language", "totalPages", "pagesRead", "coverEmoji", "coverColor", "status", "rating", "review", "notes", "createdAt", "updatedAt"]
+    },
+    "ReadingLog": {
+      "title": "ReadingLog",
+      "description": "Daily reading session log.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "id": { "type": "string", "maxLength": 128 },
+        "bookId": { "type": "string", "maxLength": 128 },
+        "pages": { "type": "number" },
+        "minutes": { "type": "number" },
+        "date": { "type": "string", "maxLength": 20 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "id", "bookId", "pages", "minutes", "date", "createdAt", "updatedAt"]
+    },
+    "ExpenseRecord": {
+      "title": "ExpenseRecord",
+      "description": "Income or expense transaction record.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "id": { "type": "string", "maxLength": 128 },
+        "txType": { "type": "string", "enum": ["income", "expense"], "maxLength": 16 },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "maxLength": 64 },
+        "date": { "type": "string", "maxLength": 20 },
+        "note": { "type": "string", "maxLength": 300 },
+        "paymentMethod": { "type": "string", "maxLength": 40 },
+        "recurring": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "id", "txType", "amount", "category", "date", "note", "paymentMethod", "recurring", "createdAt", "updatedAt"]
+    },
+    "HabitLog": {
+      "title": "HabitLog",
+      "description": "Daily habit completion entry.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "id": { "type": "string", "maxLength": 128 },
+        "habitId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "id", "habitId", "date", "completed", "createdAt", "updatedAt"]
+    },
+    "ChapterProgress": {
+      "title": "ChapterProgress",
+      "description": "HSC and general syllabus chapter tracker progress.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "id": { "type": "string", "maxLength": 128 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "paper": { "type": "number" },
+        "chapterNo": { "type": "number" },
+        "totalClasses": { "type": "number" },
+        "completedClasses": { "type": "number" },
+        "cqSolved": { "type": "boolean" },
+        "mcqSolved": { "type": "boolean" },
+        "admissionPyq": { "type": "boolean" },
+        "otherProblems": { "type": "boolean" },
+        "examDone": { "type": "boolean" },
+        "mistakesCorrected": { "type": "boolean" },
+        "difficulty": { "type": "string", "maxLength": 20 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "hidden": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "id",
+        "subjectId",
+        "paper",
+        "chapterNo",
+        "totalClasses",
+        "completedClasses",
+        "cqSolved",
+        "mcqSolved",
+        "admissionPyq",
+        "otherProblems",
+        "examDone",
+        "mistakesCorrected",
+        "difficulty",
+        "notes",
+        "hidden",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RoutineItem": {
+      "title": "RoutineItem",
+      "description": "Shared routine item across Study Planner, Daily Routine, and Money.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "routineType": { "type": "string", "enum": ["study", "daily", "money"], "maxLength": 20 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "repeat": { "type": "string", "maxLength": 32 },
+        "startTime": { "type": "string", "maxLength": 16 },
+        "endTime": { "type": "string", "maxLength": 16 },
+        "reminderTime": { "type": "string", "maxLength": 16 },
+        "done": { "type": "boolean" },
+        "progress": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "id", "title", "routineType", "subjectId", "date", "repeat", "startTime", "endTime", "reminderTime", "done", "progress", "createdAt", "updatedAt"]
+    },
+    "DomainState": {
+      "title": "DomainState",
+      "description": "Structured map state for subjects, tasks, exams, ibadah, budgets, and daily wellness.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "domain": { "type": "string", "maxLength": 64 },
+        "data": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "domain", "data", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Primary user profile, preferences, and salted PBKDF2 PIN hash."
+    },
+    "/users/{userId}/security/{lockId}": {
+      "schema": { "$ref": "#/entities/PinLockState" },
+      "description": "Monotonic PIN lockout counter enforced by rules."
+    },
+    "/users/{userId}/studySessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/StudySession" },
+      "description": "User study session logs."
+    },
+    "/users/{userId}/workoutLogs/{logId}": {
+      "schema": { "$ref": "#/entities/WorkoutLog" },
+      "description": "User workout logs."
+    },
+    "/users/{userId}/words/{wordId}": {
+      "schema": { "$ref": "#/entities/VocabWord" },
+      "description": "User vocabulary words and spaced repetition state."
+    },
+    "/users/{userId}/books/{bookId}": {
+      "schema": { "$ref": "#/entities/BookEntry" },
+      "description": "User personal library books."
+    },
+    "/users/{userId}/readingLogs/{logId}": {
+      "schema": { "$ref": "#/entities/ReadingLog" },
+      "description": "User reading session logs."
+    },
+    "/users/{userId}/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/ExpenseRecord" },
+      "description": "User income and expense records."
+    },
+    "/users/{userId}/habitLogs/{logId}": {
+      "schema": { "$ref": "#/entities/HabitLog" },
+      "description": "User daily habit logs."
+    },
+    "/users/{userId}/chapterProgress/{chapterId}": {
+      "schema": { "$ref": "#/entities/ChapterProgress" },
+      "description": "User syllabus chapter tracker records."
+    },
+    "/users/{userId}/routines/{routineId}": {
+      "schema": { "$ref": "#/entities/RoutineItem" },
+      "description": "User routines across Study, Daily life, and Money."
+    },
+    "/users/{userId}/domainState/{domainId}": {
+      "schema": { "$ref": "#/entities/DomainState" },
+      "description": "Structured per-domain collections (subjects, exams, ibadah, budgets, wellness)."
+    }
+  }
+}

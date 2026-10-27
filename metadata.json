@@ -1,0 +1,6 @@
+{
+  "name": "LifeTrack",
+  "description": "Android-friendly bilingual (Bangla & English) study planner, HSC syllabus tracker, daily habits, Islamic life, and money manager for students and general users in Bangladesh.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
